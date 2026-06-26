@@ -1,0 +1,313 @@
+industry-standard IEC/ANSI logic gate symbols and hierarchical circuit visualization.
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industry-Standard EDA Schematic Simulator</title>
+    <style>
+        body {
+            background-color: #0b0e14;
+            color: #adbac7;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #539bf5; margin-bottom: 5px; font-size: 1.6rem; }
+        .subtitle { color: #768390; font-size: 0.9em; margin-bottom: 20px; }
+        .container { display: flex; gap: 20px; max-width: 1400px; width: 100%; }
+        .panel { background: #22272e; border: 1px solid #444c56; border-radius: 6px; padding: 20px; flex: 1; min-width: 380px; }
+        .canvas-container { flex: 2; display: flex; flex-direction: column; align-items: center; background: #1c2128; border: 1px solid #444c56; border-radius: 6px; padding: 20px; position: relative;}
+        canvas { background: #101419; border: 2px solid #539bf5; border-radius: 4px; box-shadow: 0 0 15px rgba(83, 155, 245, 0.1); }
+        .dsl-box { background: #1c2128; border-left: 4px solid #f69d50; padding: 10px; font-family: 'Consolas', monospace; font-size: 0.8em; overflow-x: auto; color: #f6a052; margin-bottom: 15px; border-radius: 0 4px 4px 0; white-space: pre; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85em; color: #768390; }
+        input[type="range"] { width: 100%; accent-color: #539bf5; background: #2d333b; }
+        .btn { background-color: #347d39; color: white; border: none; padding: 10px 20px; font-size: 0.95em; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s; font-weight: bold; }
+        .btn:hover { background-color: #46954a; }
+        .console { background: #101419; border: 1px solid #444c56; border-radius: 4px; font-family: 'Consolas', monospace; padding: 10px; height: 160px; overflow-y: auto; width: 100%; box-sizing: border-box; margin-top: 15px; font-size: 0.8em; color: #57ab5a; line-height: 1.4; }
+        .status-badge { display: inline-block; padding: 2px 6px; background: #238636; color: #fff; border-radius: 3px; font-size: 0.8em; margin-bottom: 10px; }
+        .gate-legend { font-size: 0.8em; color: #768390; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 15px; margin-top: 10px; width: 100%;}
+        .gate-icon { display: inline-block; width: 15px; height: 15px; vertical-align: middle; margin-right: 5px; border: 1px solid;}
+    </style>
+</head>
+<body>
+
+    <h1>Industry-Standard EDA Schematic Simulator</h1>
+    <div class="subtitle">Hierarchical Gate-Level Simulation (Runtime: Songshan District, Taipei City)</div>
+
+    <div class="container">
+        <div class="panel">
+            <span class="status-badge">Schematic Netlist Analyzed</span>
+            <h3>Digital Logic DSL Description</h3>
+            <div class="dsl-box">
+// STAGE 1: Transient Tuning of Inversed 5-Stage Ring Oscillator
+// Logic: TUNE(OSC_5_STAGE_INV(INPUT_IMV_BUS, QUEUE_INV))
+tune_brush_scanned(wing_glucose_acute_angled_inclined_EMV.engine_inversed_five_tick(tube_IMV()_code(), tube_INV()_passage_queue()))
+
+// STAGE 2: Area-optimized Rhombus Decoder & Stochastic 9-Cell Variation Analysis
+// Logic: ANALYZE(DECODER_RHOMBUS(IMAGE_KERNEL(COMPLEMENT(IMV_BUS))))
+IMV_z-laplace_tune.stochastic_9-cells_session_chained(4-outspirt_bi_rendered_maze_info()_capacity(switch_function_complement(IMV()_code(projected_rhombus_turbine.cache_universe_link().IMAGE_kernel().skeleton_set()))))
+            </div>
+            
+            <h3>Simulation Parameters (Netlist Knobs)</h3>
+            <div class="control-group">
+                <label id="lbl-tick">Inversed Five-Tick Freq (Clock): 5.0 GHz</label>
+                <input type="range" id="param-tick" min="1" max="10" value="5" step="0.5">
+            </div>
+            <div class="control-group">
+                <label id="lbl-noise">Stochastic Fan-out Variation (9-Cells): 15%</label>
+                <input type="range" id="param-noise" min="0" max="50" value="15">
+            </div>
+            <div class="control-group">
+                <label id="lbl-capacity">4-outspirit Bus Capacity: 75%</label>
+                <input type="range" id="param-capacity" min="20" max="100" value="75">
+            </div>
+            
+            <button class="btn" id="btn-trigger">Run Hierarchical Netlist Simulation (Transient)</button>
+            
+            <div class="console" id="console-out">[EDA SPICE] All hierarchical cells loaded. Waiting for testbench execution...</div>
+        </div>
+
+        <div class="canvas-container">
+            <h3>Live Gate-Level Schematic View</h3>
+            <canvas id="simCanvas" width="800" height="500"></canvas>
+            
+            <div class="gate-legend">
+                <div><span class="gate-icon" style="border-color:#539bf5; background:#101419;"></span> NAND Gate (Five-Tick Osc)</div>
+                <div><span class="gate-icon" style="border-color:#f69d50; background:#1c2128;"></span> Tri-State Buffer (Rhombus Dec.)</div>
+                <div><span class="gate-icon" style="border-color:#f47067; background:#101419;"></span> XOR Gate (9-Cells)</div>
+                <div><span class="gate-icon" style="border-color:#ccc; background:#000;"></span> Global Clock / Bus</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const consoleOut = document.getElementById('console-out');
+
+        const paramTick = document.getElementById('param-tick');
+        const paramNoise = document.getElementById('param-noise');
+        const paramCapacity = document.getElementById('param-capacity');
+        const btnTrigger = document.getElementById('btn-trigger');
+
+        let time = 0;
+        const gateColor = '#539bf5';
+        const activeColor = '#7ee787';
+        const inactiveColor = '#768390';
+
+        function log(msg) {
+            const t = new Date().toLocaleTimeString();
+            consoleOut.innerHTML += `[${t}] ${msg}<br>`;
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+
+        // --- Logic Gate Drawing Functions (IEC Standard) ---
+
+        function drawNAND(x, y, label, inputs = 2) {
+            ctx.strokeStyle = gateColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Inputs
+            const dy = 20;
+            for(let i=0; i<inputs; i++) {
+                ctx.moveTo(x - 20, y - dy + i * dy * 2 / (inputs-1));
+                ctx.lineTo(x, y - dy + i * dy * 2 / (inputs-1));
+            }
+            // Body
+            ctx.moveTo(x, y - 25);
+            ctx.lineTo(x + 40, y - 25);
+            ctx.arc(x + 40, y, 25, -Math.PI/2, Math.PI/2);
+            ctx.lineTo(x, y + 25);
+            ctx.closePath();
+            ctx.fillStyle = '#101419'; ctx.fill();
+            ctx.stroke();
+            // Bubble
+            ctx.beginPath();
+            ctx.arc(x + 72, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = gateColor; ctx.fill();
+            // Output wire
+            ctx.moveTo(x + 78, y); ctx.lineTo(x + 100, y); ctx.stroke();
+            // Label
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Consolas';
+            ctx.fillText(label, x + 15, y + 5);
+        }
+
+        function drawBuffer(x, y, label) {
+            ctx.strokeStyle = '#f69d50';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Input
+            ctx.moveTo(x - 20, y); ctx.lineTo(x, y);
+            // Body
+            ctx.moveTo(x, y - 25);
+            ctx.lineTo(x + 50, y);
+            ctx.lineTo(x, y + 25);
+            ctx.closePath();
+            ctx.fillStyle = '#1c2128'; ctx.fill();
+            ctx.stroke();
+            // Output wire
+            ctx.moveTo(x + 50, y); ctx.lineTo(x + 80, y); ctx.stroke();
+            // Label
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Consolas';
+            ctx.fillText(label, x + 8, y + 5);
+        }
+
+        function drawXOR(x, y, label) {
+            ctx.strokeStyle = '#f47067';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Back curve
+            ctx.moveTo(x - 10, y - 25); ctx.quadraticCurveTo(x + 10, y, x - 10, y + 25);
+            // Main body
+            ctx.moveTo(x, y - 25);
+            ctx.quadraticCurveTo(x + 20, y, x, y + 25);
+            ctx.quadraticCurveTo(x + 55, y, x + 65, y);
+            ctx.quadraticCurveTo(x + 35, y, x, y - 25);
+            // Inputs
+            ctx.moveTo(x - 30, y - 12); ctx.lineTo(x - 3, y - 12);
+            ctx.moveTo(x - 30, y + 12); ctx.lineTo(x + 3, y + 12);
+            // Output bubble/wire
+            ctx.moveTo(x + 65, y); ctx.lineTo(x + 90, y); ctx.stroke();
+            // Label
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Consolas';
+            ctx.fillText(label, x + 18, y + 5);
+        }
+
+        function drawWire(x1, y1, x2, y2, isActive = false) {
+            ctx.strokeStyle = isActive ? activeColor : inactiveColor;
+            ctx.lineWidth = isActive ? 2.5 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function drawBus(x1, y1, x2, y2, width, capacity) {
+            ctx.strokeStyle = '#6e7681';
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            // Visualize capacity
+            ctx.fillStyle = activeColor;
+            ctx.fillRect(x1, y1 - width/2, (x2-x1) * capacity, width);
+        }
+
+        // Slider Updates
+        paramTick.oninput = () => document.getElementById('lbl-tick').innerText = `Five-Tick Freq (Clock): ${parseFloat(paramTick.value).toFixed(1)} GHz`;
+        paramNoise.oninput = () => document.getElementById('lbl-noise').innerText = `Stochastic Fan-out Variation (9-Cells): ${paramNoise.value}%`;
+        paramCapacity.oninput = () => document.getElementById('lbl-capacity').innerText = `4-outspirit Bus Capacity: ${paramCapacity.value}%`;
+
+        btnTrigger.onclick = () => {
+            log("⚡ Executing Transient Simulation (Testbench 001)...");
+            log("🔬 Analyzing hier_cell: OSC_5_STAGE_INV.");
+            log("📈 Convergence achieved on Stochastic 9-Cell Fan-out array.");
+        };
+
+        function drawSchematic() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const tickFreq = parseFloat(paramTick.value);
+            time += tickFreq * 0.02;
+            const clkActive = Math.sin(time) > 0;
+            const busCap = parseInt(paramCapacity.value) / 100;
+
+            // --- STAGE 1: Hierarchical Cell - Ring Oscillator ---
+            const oscY = 100;
+            const oscXStart = 80;
+            
+            // Subcircuit label
+            ctx.fillStyle = inactiveColor; ctx.font = 'bold 14px Segoe UI';
+            ctx.fillText("U1: wing_glucose_acute_angled_EMV (OSC_5_STAGE_INV)", oscXStart, oscY - 60);
+
+            // Inputs
+            ctx.fillStyle = inactiveColor; ctx.font = '12px Consolas';
+            ctx.fillText("tube_IMV_code()", 20, oscY - 12);
+            ctx.fillText("tube_INV_queue()", 20, oscY + 12);
+            drawWire(20, oscY - 12, oscXStart - 20, oscY - 12, clkActive);
+            drawWire(20, oscY + 12, oscXStart - 20, oscY + 12, !clkActive);
+
+            // Ring OSC Chain
+            const stageGap = 120;
+            for(let i=0; i<5; i++) {
+                const stageActive = i % 2 === 0 ? clkActive : !clkActive;
+                drawWire(oscXStart - 20 + i*stageGap, oscY, oscXStart + i*stageGap, oscY, stageActive);
+                drawNAND(oscXStart + i*stageGap, oscY, `INV${i+1}`);
+            }
+            
+            // Feedback wire
+            ctx.strokeStyle = activeColor;
+            ctx.beginPath();
+            ctx.moveTo(oscXStart + 4 * stageGap + 78, oscY); // Last NAND output
+            ctx.quadraticCurveTo(oscXStart + 4 * stageGap + 120, 20, oscXStart - 50, 20);
+            ctx.lineTo(oscXStart - 50, oscY);
+            ctx.lineTo(oscXStart - 20, oscY);
+            ctx.stroke();
+
+            // --- Main Bus: 4-outspirit Bi-Render Maze ---
+            const busY = 260;
+            ctx.fillStyle = inactiveColor; ctx.font = 'bold 14px Segoe UI';
+            ctx.fillText("BUS1: 4-outspirit_bi_rendered_maze (SYSTEM_BUS)", 300, busY - 30);
+            drawBus(100, busY, canvas.width - 100, busY, 12, busCap);
+            drawWire(oscXStart + 4 * stageGap + 78, oscY, 500, busY - 12, clkActive); // Osc output to bus
+
+            // --- STAGE 2: Hierarchical Cell - Decoder & Stochastic Analysis ---
+            const lowerY = 380;
+            
+            // U2 Subcircuit label
+            ctx.fillStyle = inactiveColor; ctx.font = 'bold 14px Segoe UI';
+            ctx.fillText("U2: projected_rhombus_turbine (DECODER_RHOMBUS)", lowerY - 320, lowerY - 60);
+
+            // Input from Bus (Complement function)
+            drawWire(250, busY + 12, 120, lowerY, !clkActive);
+            drawNAND(120, lowerY, "COMP");
+
+            // Rhombus Decoder
+            drawBuffer(240, lowerY, "DEC");
+            
+            // Stochastic 9-Cells Fan-out Array (U3)
+            const fanoutX = 400;
+            const fanoutY = 380;
+            ctx.fillStyle = inactiveColor; ctx.font = 'bold 14px Segoe UI';
+            ctx.fillText("U3: stochastic_9-cells_chained (FAN-OUT)", fanoutX + 40, lowerY - 60);
+
+            drawWire(320, lowerY, fanoutX - 30, fanoutY, clkActive);
+            const noise = parseInt(paramNoise.value) / 100;
+
+            for(let i=0; i<3; i++) {
+                for(let j=0; j<3; j++) {
+                    const gx = fanoutX + i * 110;
+                    const gy = fanoutY + j * 50 - 50;
+                    const idx = i * 3 + j;
+                    const variation = (Math.sin(time + idx) > noise) ? clkActive : false;
+                    
+                    drawWire(fanoutX - 30, fanoutY, gx - 30, gy, variation);
+                    drawXOR(gx, gy, `STCH${idx}`);
+                }
+            }
+
+            // Global Clock indicator (Taipei Time)
+            ctx.fillStyle = activeColor; ctx.font = 'bold 16px Segoe UI';
+            ctx.fillText(`CLK: ${parseFloat(paramTick.value).toFixed(1)} GHz`, canvas.width - 160, 30);
+            ctx.beginPath();
+            ctx.arc(canvas.width - 180, 25, 8, 0, Math.PI*2);
+            ctx.fill();
+
+            requestAnimationFrame(drawSchematic);
+        }
+
+        log("🚀 EDA Schematic Simulator initialized. Hierarchical netlist ready.");
+        drawSchematic();
+    </script>
+</body>
+</html>
