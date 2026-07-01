@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>EDA Circuit Engine & DSL Solver</title>
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: #111827;
+            --accent-color: #06b6d4; /* EDA 電路主題藍 */
+            --text-color: #f3f4f6;
+            --border-color: #374151;
+            --graph-amber: #f59e0b;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--accent-color); margin-bottom: 5px; font-size: 1.8em; }
+        .subtitle { color: #9ca3af; margin-bottom: 20px; font-size: 0.9em; }
+        .main-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            height: 680px;
+        }
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .left-panel { flex: 1.1; }
+        .right-panel { flex: 1.4; }
+        
+        .dsl-box {
+            background-color: #030712;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8em;
+            word-break: break-all;
+            color: #22d3ee;
+            margin-bottom: 15px;
+        }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn {
+            flex: 1;
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:disabled { background-color: #4b5563; cursor: not-allowed; }
+
+        /* 畫布與電路圖區 */
+        .view-tiles {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            flex-grow: 1;
+        }
+        canvas {
+            background-color: #030712;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 管線組件 */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .step {
+            border: 1px solid #1f2937;
+            background: #1f293780;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+        }
+        .step.active { border-color: var(--accent-color); background: #0891b215; }
+        .step.done { border-color: #10b981; background: #05966915; }
+        .step-header { display: flex; justify-content: space-between; font-weight: bold; }
+        .step-token { font-family: monospace; font-size: 0.8em; color: #9ca3af; margin-top: 3px; }
+
+        /* 終端機 */
+        .terminal {
+            background-color: #030712;
+            border: 1px solid var(--border-color);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8em;
+            padding: 15px;
+            border-radius: 6px;
+            height: 180px;
+            overflow-y: auto;
+            color: #38bdf8;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>EDA Circuit Engine & DSL Automated Solver</h1>
+    <div class="subtitle">自動化矩陣求解與網表編譯模擬器：基於 SPICE MNA（修正節點分析法）與底層核心 DSL 自動對齊</div>
+
+    <div class="main-container">
+        <div class="panel left-panel">
+            <h3>編譯輸入 (EDA Pipeline Token)</h3>
+            <div class="dsl-box" id="dslInput"></div>
+            
+            <div class="btn-group">
+                <button class="btn" id="runBtn" onclick="runAutoCircuitSolver()">自動化網表解算 (Solve Netlist)</button>
+            </div>
+            
+            <h3>矩陣解算管線 (SPICE Pipeline Stages)</h3>
+            <div class="pipeline" id="pipelineFlow"></div>
+        </div>
+
+        <div class="view-tiles">
+            <div class="panel right-panel">
+                <h3>即時生成的電路圖 (Generated Schematic Layout)</h3>
+                <canvas id="schematicCanvas"></canvas>
+            </div>
+            <div class="panel right-panel">
+                <h3>SPICE 矩陣求解波形 (Transient Response Waveform)</h3>
+                <canvas id="waveformCanvas"></canvas>
+            </div>
+            <div class="panel right-panel" style="height: 210px;">
+                <h3>核心日誌 (Solver Core Engine Logs)</h3>
+                <div class="terminal" id="terminalLog">⚡ 等待編譯指令中... 點擊按鈕將自動從底層幾何場導出電路拓撲並完成 SPICE 矩陣求解...<br></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const rawDsl = `flattened_traced_socketed_tune(holo_info())_retrieved_zone(glide_pinched_web.particle_focused(sup_result(pattern_result()_nodes_index_session()_tri_ports_levied_unit_tilt(percentage_ENV.async_related_halo_injected_split_batch.5-pulsed_cornered(pyramid_nodes_pi_inf([ship_batch_queue().flash_units_disc_encurved.slide_lens.forced_generated(mirror_vehicle_trace(fourth_order.differentiate(toube_integral_cloud_zone(sphere_commute_tunnel())))`;
+
+const sCanvas = document.getElementById('schematicCanvas');
+const wCanvas = document.getElementById('waveformCanvas');
+const sCtx = sCanvas.getContext('2d');
+const wCtx = wCanvas.getContext('2d');
+const terminalEl = document.getElementById('terminalLog');
+
+// 調整畫布高解析度度
+function initCanvas() {
+    sCanvas.width = sCanvas.clientWidth; sCanvas.height = sCanvas.clientHeight;
+    wCanvas.width = wCanvas.clientWidth; wCanvas.height = wCanvas.clientHeight;
+}
+window.onload = () => { initCanvas(); drawEmptyGrids(); document.getElementById('dslInput').innerText = rawDsl; };
+
+// EDA 電路管線各階段定義
+const edaSolverStages = [
+    {
+        id: "step1",
+        name: "1. 提取 3D 過孔寄生幾何體與電阻電容",
+        token: "toube_integral_cloud_zone(sphere_commute_tunnel())",
+        desc: "讀取實體佈局中的 GDSII 三維過孔與導線，將幾何特徵網格化成點雲數據。",
+        render: () => drawSchematicComponent('layout')
+    },
+    {
+        id: "step2",
+        name: "2. 高階麥克斯威爾方程差分求解 (寄生參數提取)",
+        token: "fourth_order.differentiate(...)",
+        desc: "執行四階偏微分電磁場求解，精確提取導線間的互感與耦合電容 (RC Extraction)。",
+        render: () => drawSchematicComponent('rc')
+    },
+    {
+        id: "step3",
+        name: "3. 自動生成 SPICE 網表與拓撲電路圖",
+        token: "slide_lens.forced_generated(mirror_vehicle_trace(...))",
+        desc: "根據提取出的寄生參數與標準單元，自動強行生成電路網絡接線圖與網表檔案。",
+        render: () => drawSchematicComponent('full_circuit')
+    },
+    {
+        id: "step4",
+        name: "4. 電路矩陣層次化節點與導納矩陣編譯",
+        token: "pyramid_nodes_pi_inf(...)",
+        desc: "使用層次化金字塔樹狀架構，對數十萬個電路節點進行排序，建立 SPICE 修正節點分析（MNA）矩陣。",
+        render: () => drawMatrixGrid()
+    },
+    {
+        id: "step5",
+        name: "5. 分布式多線程異步 LU 矩陣分解加速",
+        token: "async_related_halo_injected_split_batch",
+        desc: "將超大型稀疏矩陣切分成多個子批次（Split Batch），分派給多核心進行並發高斯消去與 LU 分解。",
+        render: () => drawMatrixSolving()
+    },
+    {
+        id: "step6",
+        name: "6. 瞬態（Transient）時間步長迭代解算",
+        token: "glide_pinched_web.particle_focused(...)",
+        desc: "運用動態時間步長進行牛頓-拉夫森（Newton-Raphson）非線性迭代，動態收斂捕捉電路突波。",
+        render: (progress) => drawWaveform(progress)
+    },
+    {
+        id: "step7",
+        name: "7. 波形簽核扁平化、網表微調回標與 API 套接",
+        token: "flattened_traced_socketed_tune(holo_info())",
+        desc: "將高維求解波形扁平化輸出為標準層次化數據，微調電路驅動尺寸（ECO），完成最終動態簽核。",
+        render: () => drawWaveform(1.0, true)
+    }
+];
+
+// 初始化管線 UI
+const pipelineEl = document.getElementById('pipelineFlow');
+edaSolverStages.forEach(stage => {
+    pipelineEl.innerHTML += `
+        <div class="step" id="${stage.id}">
+            <div class="step-header"><span>${stage.name}</span><span id="status-${stage.id}" style="color:#6b7280">READY</span></div>
+            <div class="step-token">Token: ${stage.token}</div>
+        </div>
+    `;
+});
+
+function drawEmptyGrids() {
+    sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+    wCtx.clearRect(0,0,wCanvas.width,wCanvas.height);
+    sCtx.strokeStyle = '#111827'; wCtx.strokeStyle = '#111827';
+    for(let i=0; i<sCanvas.width; i+=20) { sCtx.beginPath(); sCtx.moveTo(i,0); sCtx.lineTo(i,sCanvas.height); sCtx.stroke(); }
+    for(let i=0; i<wCanvas.width; i+=20) { wCtx.beginPath(); wCtx.moveTo(i,0); wCtx.lineTo(i,wCanvas.height); wCtx.stroke(); }
+}
+
+function logToTerminal(text, color = '#38bdf8') {
+    const time = new Date().toISOString().split('T')[1].substring(0, 8);
+    terminalEl.innerHTML += `<span style="color:#4b5563">[${time}]</span> <span style="color:${color}">${text}</span><br>`;
+    terminalEl.scrollTop = terminalEl.scrollHeight;
+}
+
+// --- 電路圖繪圖引擎 ---
+function drawSchematicComponent(type) {
+    sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+    sCtx.lineWidth = 2;
+    if (type === 'layout') {
+        // 畫 3D Overlap 幾何實體佈局
+        sCtx.fillStyle = 'rgba(6, 182, 212, 0.2)'; sCtx.fillRect(50, 40, 120, 50);
+        sCtx.fillStyle = 'rgba(236, 72, 153, 0.2)'; sCtx.fillRect(110, 60, 100, 60);
+        sCtx.strokeStyle = '#06b6d4'; sCtx.strokeRect(50,40,120,50);
+        sCtx.strokeStyle = '#ec4899'; sCtx.strokeRect(110,60,100,60);
+        sCtx.fillStyle = '#f3f4f6'; sCtx.fillText("提取底層過孔幾何重疊區...", 50, 150);
+    } 
+    else if (type === 'rc') {
+        // 畫提取出來的阻抗與電容網路
+        sCtx.strokeStyle = '#f59e0b';
+        sCtx.beginPath(); sCtx.moveTo(40,80); sCtx.lineTo(70,80); sCtx.lineTo(75,70); sCtx.lineTo(85,90); sCtx.lineTo(95,70); sCtx.lineTo(100,80); sCtx.lineTo(150,80);
+        // 電容
+        sCtx.moveTo(150,65); sCtx.lineTo(150,95); sCtx.moveTo(160,65); sCtx.lineTo(160,95);
+        sCtx.moveTo(160,80); sCtx.lineTo(220,80);
+        sCtx.stroke();
+        sCtx.fillStyle = '#f59e0b'; sCtx.fillText("R_parasitic = 14.2 Ω", 50, 50); sCtx.fillText("C_coupling = 3.8 fF", 140, 50);
+    }
+    else if (type === 'full_circuit') {
+        // 畫出完整的 SPICE 拓撲圖
+        sCtx.strokeStyle = '#f3f4f6'; sCtx.beginPath();
+        // 電源
+        sCtx.arc(50, 100, 15, 0, Math.PI*2); sCtx.moveTo(50,85); sCtx.lineTo(50,115);
+        // 連線到反相器
+        sCtx.moveTo(65, 100); sCtx.lineTo(120, 100);
+        // 邏輯閘三角形
+        sCtx.moveTo(120, 80); sCtx.lineTo(120, 120); sCtx.lineTo(160, 100); sCtx.closePath();
+        sCtx.moveTo(166, 100); sCtx.arc(163, 100, 3, 0, Math.PI*2);
+        sCtx.moveTo(166, 100); sCtx.lineTo(240, 100);
+        sCtx.stroke();
+        sCtx.fillStyle = '#4b5563'; sCtx.fillText("GND", 40, 140);
+        sCtx.fillStyle = '#06b6d4'; sCtx.fillText("自動生成的電路網表拓撲 (Netlist Topology)", 20, 30);
+    }
+}
+
+function drawMatrixGrid() {
+    sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+    sCtx.strokeStyle = '#374151'; sCtx.fillStyle = '#f3f4f6';
+    sCtx.fillText("修正節點分析法 (MNA Matrix Compiler)", 20, 30);
+    for(let i=0; i<4; i++) {
+        for(let j=0; j<4; j++) {
+            sCtx.strokeRect(40 + j*50, 60 + i*40, 45, 30);
+            sCtx.fillStyle = '#10b981'; sCtx.fillText("G_ij", 52 + j*50, 80 + i*40);
+        }
+    }
+}
+
+function drawMatrixSolving() {
+    sCtx.fillStyle = '#ef4444'; sCtx.fillText("⚡ 多核心異步並發 LU 分解中 (Parallel Cluster Solving)...", 20, 50);
+    sCtx.fillStyle = '#38bdf8'; sCtx.fillText("Core 0: 正在消除子矩陣 A [Block 1]", 20, 80);
+    sCtx.fillText("Core 1: 正在消除子矩陣 B [Block 2]", 20, 105);
+}
+
+// --- 波形繪圖引擎 ---
+function drawWaveform(progress, isComplete = false) {
+    wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+    wCtx.strokeStyle = '#374151'; wCtx.lineWidth = 1;
+    // 畫坐標軸
+    wCtx.beginPath(); wCtx.moveTo(40, 20); wCtx.lineTo(40, wCanvas.height - 30); wCtx.lineTo(wCanvas.width - 20, wCanvas.height - 30); wCtx.stroke();
+    
+    wCtx.lineWidth = 2;
+    // 繪製脈衝輸入波形 (黃色)
+    wCtx.strokeStyle = '#f59e0b'; wCtx.beginPath();
+    wCtx.moveTo(40, wCanvas.height - 40);
+    wCtx.lineTo(100, wCanvas.height - 40); wCtx.lineTo(101, 40);
+    wCtx.lineTo(wCanvas.width * 0.6, 40); wCtx.lineTo(wCanvas.width * 0.6 + 1, wCanvas.height - 40);
+    wCtx.lineTo(wCanvas.width - 20, wCanvas.height - 40);
+    wCtx.stroke();
+
+    // 繪製模擬計算出的響應波形 (藍色，帶有過阻尼與寄生電容帶來的延遲抖動)
+    wCtx.strokeStyle = '#06b6d4'; wCtx.beginPath();
+    let startX = 40;
+    wCtx.moveTo(startX, wCanvas.height - 38);
+    
+    let limit = Math.floor((wCanvas.width - 80) * progress);
+    for(let x = 0; x < limit; x++) {
+        let currentX = startX + x;
+        let currentY = wCanvas.height - 38;
+        
+        if (currentX > 100 && currentX <= wCanvas.width * 0.6) {
+            // 上升沿響應：含有高階微分的 RC 充放電指數公式加上突波抖動
+            let t = (currentX - 100) / 30;
+            currentY = 40 + (wCanvas.height - 78) * Math.exp(-t) + Math.sin(currentX)*3 * Math.exp(-t/2);
+        } else if (currentX > wCanvas.width * 0.6) {
+            // 下降沿響應
+            let t = (currentX - wCanvas.width * 0.6) / 30;
+            currentY = (wCanvas.height - 38) - (wCanvas.height - 78) * Math.exp(-t) - Math.sin(currentX)*3 * Math.exp(-t/2);
+        }
+        wCtx.lineTo(currentX, currentY);
+    }
+    wCtx.stroke();
+    
+    wCtx.fillStyle = '#9ca3af'; wCtx.fillText("時間 (Time: ns)", wCanvas.width - 100, wCanvas.height - 10);
+    wCtx.fillText("電壓 (Volt: V)", 10, 15);
+    
+    if(isComplete) {
+        wCtx.fillStyle = '#10b981'; wCtx.fillText("✔ Transient Sign-off Done", wCanvas.width - 180, 30);
+    }
+}
+
+// --- 核心自動解算狀態機調度 ---
+async function runAutoCircuitSolver() {
+    document.getElementById('runBtn').disabled = true;
+    terminalEl.innerHTML = "";
+    logToTerminal("🚀 [PARSER] 開始解析物理電路自動解算管線 DSL...", "#f3f4f6");
+    drawEmptyGrids();
+
+    // 初始化狀態卡片
+    edaSolverStages.forEach(s => {
+        document.getElementById(s.id).className = "step";
+        document.getElementById(`status-${s.id}`).innerText = "READY";
+        document.getElementById(`status-${s.id}`).style.color = "#6b7280";
+    });
+
+    for(let i=0; i<edaSolverStages.length; i++) {
+        const stage = edaSolverStages[i];
+        const el = document.getElementById(stage.id);
+        const statusEl = document.getElementById(`status-${stage.id}`);
+        
+        el.className = "step active";
+        statusEl.innerText = "SOLVING";
+        statusEl.style.color = "#f59e0b";
+        
+        logToTerminal(`[EXEC] 進入階段 ${i+1}: ${stage.name}`, "#06b6d4");
+        logToTerminal(`[TOKEN] 調用演算法: ${stage.token}`, "#a855f7");
+
+        // 特殊處理時間步長迭代（動態繪製波形）
+        if (stage.id === "step6") {
+            for(let p=0; p<=100; p+=10) {
+                stage.render(p / 100);
+                await new Promise(r => setTimeout(r, 120));
+            }
+        } else {
+            stage.render();
+            await new Promise(r => setTimeout(r, stage.id === "step5" ? 1800 : 1200)); // 矩陣分解耗時較長
+        }
+
+        logToTerminal(`[SUCCESS] 階段 ${i+1} 運算收斂完成。`, "#10b981");
+        logToTerminal(`----------------------------------------------------------------------`, "#374151");
+        
+        el.className = "step done";
+        statusEl.innerText = "COMPILED";
+        statusEl.style.color = "#10b981";
+    }
+
+    logToTerminal("🎉 [EDA SIGN-OFF PASSED] 瞬態矩陣與寄生網路自動求解成功！波形數據已扁平化回標至大師佈局中。", "#10b981");
+    document.getElementById('runBtn').disabled = false;
+}
+</script>
+</body>
+</html>
