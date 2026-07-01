@@ -1,0 +1,12 @@
+這套「DSL 電路自動模擬器」的運作機制
+實時原理圖與網表生成 (Schematic Layout View)：
+模擬了現代 EDA 工具（如 Cadence Virtuoso 或 Synopsys Custom Compiler）的真實流程。從最初的幾何實體佈局提取（Stage 1），經由偏微分求解器得出寄生 RC 參數（Stage 2），進而自動在 Canvas 畫布上強行繪製出電路拓撲符號（Stage 3）。
+
+SPICE 修正節點矩陣編譯與並行 LU 分解：
+
+在第 4 階段（pyramid_nodes_pi_inf），網頁引擎模擬了將元件的電導、電容值填入 MNA 稀疏導納矩陣。
+
+在第 5 階段（async_related_halo_injected_split_batch），模擬了高階 SPICE 工具利用多核心處理器異步對矩陣進行區塊分頁（Blocks）消去與 LU 分解的並發調度。
+
+瞬態波形逼真渲染 (Transient Waveform Solver)：
+在第 6 階段，模擬器調度 Canvas 動態繪製出訊號從節點 1 輸入後，通過含有寄生電阻、互感與耦合電容的傳輸線路時，所產生的訊號延遲（Delay）、過衝突波（Overshoot）與高頻衰減振盪（Ringing Jitter）。
